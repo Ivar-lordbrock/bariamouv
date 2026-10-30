@@ -77,6 +77,7 @@ Ouvrir l'adresse GitHub Pages sur le téléphone, puis :
 - **Le site GitHub Pages est public** (compte gratuit) : les illustrations et pages du livret seront visibles par toute personne qui a l'adresse. Si le livret ne doit pas être diffusé, ne publie pas le dossier `img/fiches` (le bouton « Fiche » affichera alors une image vide) ou garde l'appli en local.
 - **Les données sont propres à chaque navigateur** : l'historique du téléphone n'apparaît pas sur l'ordinateur. Pour changer de téléphone : Réglages → *Exporter*, puis *Importer* sur le nouvel appareil.
 - **Mise à jour du code** : après avoir modifié des fichiers, change `CACHE = 'bariamouv-v1'` en `v2` dans `sw.js` pour que les téléphones récupèrent la nouvelle version sans attendre.
+- **Voix des annonces** : l'appli utilise les voix installées sur le téléphone et choisit d'office la plus naturelle (Réglages → *Voix* pour en changer, régler le débit et écouter un exemple). Pour une voix moins robotique, installer une voix française « améliorée » / « premium » (iPhone) ou les données vocales du moteur Google (Android) : la marche à suivre est dans les Réglages.
 - **Tailwind via CDN** : pratique pour démarrer (un avertissement « should not be used in production » s'affiche dans la console, c'est normal). Il faut une connexion lors de la toute première ouverture ; ensuite le service worker le garde en cache.
 
 ## Ajouter un exercice par défaut
