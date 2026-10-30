@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BariaMouv · Sport adapté</title>
+  <meta name="description" content="Suivi d'activité physique adaptée au parcours bariatrique : exercices, ateliers sur-mesure, chronomètre et historique. 100 % dans le navigateur.">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="BariaMouv">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS (CDN) : les couleurs pointent vers les variables de style.css -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script>
+    tailwind.config = (() => {
+      const v = (n) => `rgb(var(--${n}) / <alpha-value>)`;
+      return {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              page: v('page'), card: v('card'), card2: v('card2'), ink: v('ink'), muted: v('muted'), line: v('line'),
+              brand: v('brand'), onbrand: v('onbrand'), prep: v('prep'), rest: v('rest'), danger: v('danger'), warn: v('warn'), ok: v('ok'),
+            },
+            fontFamily: { sans: ['Nunito', 'system-ui', 'sans-serif'] },
+          },
+        },
+      };
+    })();
+  </script>
+  <script>
+    // Applique le thème et la taille de texte avant l'affichage (évite un flash blanc).
+    try {
+      const s = JSON.parse(localStorage.getItem('bariamouv.v1.settings') || '{}');
+      const t = s.theme || 'auto';
+      if (t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark');
+      if (s.bigText) document.documentElement.classList.add('big-text');
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="antialiased">
+  <header id="topbar" class="sticky top-0 z-30 border-b border-line/70">
+    <div class="mx-auto max-w-md px-4 h-14 flex items-center gap-3">
+      <a href="#accueil" class="flex items-center gap-2.5 flex-1 min-w-0" aria-label="Accueil">
+        <img src="icons/icon.svg" class="w-9 h-9 rounded-xl" alt="">
+        <span class="leading-tight min-w-0">
+          <span class="block font-black text-lg">BariaMouv</span>
+          <span class="block text-[11px] text-muted font-bold -mt-0.5 truncate">Bouger à ton rythme</span>
+        </span>
+      </a>
+      <button id="phase-badge" class="phase-badge" data-action="open-settings">Phase 1</button>
+      <button class="icon-btn" data-action="open-settings" aria-label="Réglages">
+        <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="view" class="mx-auto max-w-md px-4 pt-3 pb-32" tabindex="-1"></main>
+
+  <nav id="tabbar" class="fixed bottom-0 inset-x-0 z-30 border-t border-line" aria-label="Navigation principale">
+    <div class="mx-auto max-w-md grid grid-cols-4">
+      <a href="#accueil" data-view="home" class="tab">
+        <span class="tab-ico"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/></svg></span>Accueil
+      </a>
+      <a href="#exercices" data-view="library" class="tab">
+        <span class="tab-ico"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>Exercices
+      </a>
+      <a href="#ateliers" data-view="workouts" class="tab">
+        <span class="tab-ico"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 5-10 5L2 7l10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg></span>Ateliers
+      </a>
+      <a href="#historique" data-view="history" class="tab">
+        <span class="tab-ico"><svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M8 17v-6M13 17V7M18 17v-3"/></svg></span>Historique
+      </a>
+    </div>
+  </nav>
+
+  <div id="player" hidden></div>
+  <div id="modal-root"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <input id="import-file" type="file" accept="application/json,.json" class="hidden" data-input="import-file">
+
+  <noscript><p style="padding:1rem">BariaMouv a besoin de JavaScript pour fonctionner.</p></noscript>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
