@@ -5,7 +5,7 @@
  *
  * Plan : utilitaires · stockage & état · exercices · ateliers · navigation & modales
  *        · vues (accueil, exercices, ateliers, composer, historique) · réglages
- *        · mode séance (chrono, sons, voix) · actions · démarrage
+ *        · mode séance (chrono, sons) · actions · démarrage
  */
 (() => {
   'use strict';
@@ -31,11 +31,6 @@
     if (sec < 60) return `${Math.round(sec)} s`;
     const m = Math.round(sec / 60);
     return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
-  };
-  const speakSec = (sec) => {
-    if (sec < 60) return `${sec} secondes`;
-    const m = Math.floor(sec / 60), s = sec % 60;
-    return `${m === 1 ? 'une minute' : `${m} minutes`}${s ? ' ' + s : ''}`;
   };
   const fmtDay = new Intl.DateTimeFormat('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
   const fmtLong = new Intl.DateTimeFormat('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -90,7 +85,7 @@
 
   const DEFAULT_SETTINGS = {
     theme: 'auto', bigText: false, phase: 1, weeklyGoal: 3,
-    sound: true, voice: true, voiceURI: '', voiceRate: 1, vibrate: true, prep: 10, switchTime: 5, restBetween: 60, accepted: false,
+    sound: true, vibrate: true, prep: 10, switchTime: 5, restBetween: 60, accepted: false,
   };
 
   const S = {
@@ -1015,15 +1010,6 @@
   function toggleRow(key, label, desc) {
     return `<label class="toggle-row"><span><b>${label}</b><small>${desc}</small></span><input type="checkbox" class="switch" data-input="set-bool" data-key="${key}" ${S.settings[key] ? 'checked' : ''}></label>`;
   }
-  function voiceOptions() {
-    const best = voices.find((v) => !badVoices.has(v.voiceURI));
-    if (!voices.length) return '<option value="">Voix du téléphone</option>';
-    const seen = {}; // Android peut donner le même nom à plusieurs voix : on les numérote
-    return `<option value="">Automatique${best ? ` (${esc(voiceLabel(best))})` : ''}</option>${voices.map((v) => {
-      const l = voiceLabel(v), n = (seen[l] = (seen[l] || 0) + 1);
-      return `<option value="${esc(v.voiceURI)}" ${v.voiceURI === S.settings.voiceURI ? 'selected' : ''}>${esc(n > 1 ? `${l} (${n})` : l)}</option>`;
-    }).join('')}`;
-  }
   function phasePicker(action = 'set') {
     return `<div class="grid gap-2">${[1, 2, 3].map((p) => `<button type="button" class="pick-row ${S.settings.phase === p ? 'is-on' : ''}" data-action="${action}" data-key="phase" data-value="${p}">
       <span class="w-11 h-11 rounded-xl bg-brand/15 text-brand grid place-items-center font-black shrink-0">P${p}</span>
@@ -1051,22 +1037,6 @@
 
       <section><h3 class="section-title">Pendant la séance</h3>
         ${toggleRow('sound', 'Bips sonores', 'Décompte 3-2-1 et fin de chaque étape')}
-        ${toggleRow('voice', 'Annonces vocales', "Nom de l'exercice, séries, repos")}
-        ${'speechSynthesis' in window ? `<div class="pb-3 ${S.settings.voice ? '' : 'opacity-50'}">
-          <label class="label" for="voice-select">Voix</label>
-          <select id="voice-select" class="input" data-input="set-voice">${voiceOptions()}</select>
-          <span class="label mt-3">Débit</span>${seg('voiceRate', [[0.9, 'Posé'], [1, 'Normal'], [1.1, 'Rapide']])}
-          <button type="button" class="btn btn-ghost w-full mt-3" data-action="voice-test">${icon('sound', 'w-5 h-5')} Écouter un exemple</button>
-          <details class="mt-3 text-sm">
-            <summary class="font-extrabold text-brand cursor-pointer">La voix reste robotique ?</summary>
-            <p class="text-muted font-semibold mt-2 leading-relaxed">L'appli utilise les voix installées sur le téléphone. Une voix de meilleure qualité s'installe gratuitement :</p>
-            <ul class="text-muted font-semibold mt-1 space-y-1 leading-relaxed list-disc pl-5">
-              <li><b class="text-ink">iPhone</b> : Réglages › Accessibilité › Contenu énoncé › Voix › Français › choisir une voix et télécharger la version <i>améliorée</i> ou <i>premium</i>.</li>
-              <li><b class="text-ink">Android</b> : Paramètres › Gestion globale (ou Accessibilité) › Synthèse vocale › moteur <i>Google</i> › ⚙️ › Installer les données vocales › Français.</li>
-            </ul>
-            <p class="text-muted font-semibold mt-1 leading-relaxed">Puis rouvre l'appli et choisis la nouvelle voix ci-dessus.</p>
-          </details>
-        </div>` : ''}
         ${toggleRow('vibrate', 'Vibrations', 'À chaque changement d\'étape (Android)')}
         <span class="label mt-2">Préparation avant la séance</span>${seg('prep', [[5, '5 s'], [10, '10 s'], [15, '15 s'], [20, '20 s']])}
         <span class="label mt-3">Changement de côté</span>${seg('switchTime', [[3, '3 s'], [5, '5 s'], [10, '10 s']])}
@@ -1189,7 +1159,7 @@
     </div>`, { label: 'Avant de commencer', onClose: () => { S.checkin = null; } });
   }
 
-  /* ================= Mode séance : sons, voix, écran ================= */
+  /* ================= Mode séance : sons, écran ================= */
   let audioCtx = null, wakeLock = null, tickTimer = null;
 
   function ensureAudio() {
@@ -1208,57 +1178,6 @@
     o.connect(g).connect(audioCtx.destination);
     o.start(t);
     o.stop(t + dur + 0.02);
-  }
-  /* ---- Voix ---- */
-  // Les voix dépendent du téléphone : on classe les voix françaises pour prendre la plus naturelle
-  // (« Natural » d'Edge, « Premium »/« Enhanced » d'iPhone, Google…), sauf si une voix est choisie dans les réglages.
-  let voices = [];
-  const badVoices = new Set(); // voix en ligne en échec (pas de réseau) : ignorées jusqu'au rechargement
-  function loadVoices() {
-    if (!('speechSynthesis' in window)) return;
-    voices = speechSynthesis.getVoices()
-      .filter((v) => /^fr([-_]|$)/i.test(v.lang || ''))
-      .sort((a, b) => voiceScore(b) - voiceScore(a));
-  }
-  function voiceScore(v) {
-    const id = `${v.name} ${v.voiceURI}`.toLowerCase();
-    let s = 0;
-    if (/natural|neural|wavenet|studio/.test(id)) s += 100;
-    if (/premium/.test(id)) s += 90;
-    if (/enhanced|amélioré/.test(id)) s += 80;
-    if (/siri/.test(id)) s += 70;
-    if (/google/.test(id)) s += 60;
-    if (/network|online/.test(id)) s += 30;
-    if (/eloquence|espeak|\b(eddy|flo|grandma|grandpa|grand-m[eè]re|grand-p[eè]re|jacques|reed|rocko|sandy|shelley)\b/.test(id)) s -= 80;
-    if (/^fr[-_]fr/i.test(v.lang)) s += 20;
-    if (v.default) s += 5;
-    return s;
-  }
-  function currentVoice() {
-    if (!voices.length) loadVoices();
-    const ok = voices.filter((v) => !badVoices.has(v.voiceURI));
-    return ok.find((v) => v.voiceURI === S.settings.voiceURI) || ok[0] || null;
-  }
-  const voiceLabel = (v) => `${v.name.replace(/\s*-\s*(French|Français).*$/i, '').replace(/^Microsoft\s+/, '').replace(/\s*Online\s*\(Natural\)/i, ' (naturelle)')}${v.localService ? '' : ' · en ligne'}`;
-  // Nom d'exercice lisible à voix haute : « Chaise murale (gainage) » → « Chaise murale, gainage ».
-  const spoken = (name) => name.replace(/\s*\(([^)]*)\)/g, ', $1').replace(/\s*\/\s*/g, ' ou ').replace(/\s+[-–—]\s+/g, ', ');
-  const pick = (list) => list[Math.floor(Math.random() * list.length)];
-
-  function say(text, force = false) {
-    if ((!S.settings.voice && !force) || !('speechSynthesis' in window)) return;
-    speechSynthesis.cancel();
-    const v = currentVoice();
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = v?.lang.replace('_', '-') || 'fr-FR';
-    if (v) u.voice = v;
-    u.rate = S.settings.voiceRate || 1;
-    u.onerror = (ev) => {
-      // Voix en ligne sans réseau : on retente aussitôt avec la meilleure voix restante.
-      if (!v || v.localService || !/network|synthesis|voice-unavailable/.test(ev.error || '')) return;
-      badVoices.add(v.voiceURI);
-      say(text, force);
-    };
-    speechSynthesis.speak(u);
   }
   const buzz = (p) => { if (S.settings.vibrate) navigator.vibrate?.(p); };
   async function lockScreen() { try { wakeLock = await navigator.wakeLock?.request('screen'); } catch { /* non supporté */ } }
@@ -1323,13 +1242,12 @@
     el.hidden = true;
     el.innerHTML = '';
     releaseLock();
-    if ('speechSynthesis' in window) speechSynthesis.cancel();
     if (!modalOpen) { document.body.classList.remove('overflow-hidden'); popOverlay(); }
     render();
   }
 
   // overshoot : retard accumulé (onglet en arrière-plan) reporté sur l'étape chronométrée suivante.
-  function goStep(i, { silent = false, overshoot = 0 } = {}) {
+  function goStep(i, { overshoot = 0 } = {}) {
     const P = S.player, now = Date.now();
     if (P.paused) { P.pausedTotal += now - P.pauseAt; P.pauseAt = now; }
     P.idx = i;
@@ -1337,65 +1255,10 @@
     P.stepStart = now;
     P.stepPaused = 0;
     P.lastBeep = null;
-    P.cueIdx = -1;
     P.remaining = st.dur * 1000;
     P.endAt = now + P.remaining - (st.dur ? overshoot : 0);
-    if (!silent) announce(st);
     saveActive();
     renderPlayer();
-  }
-
-  // Annonces : phrases complètes et variées (plus naturelles que des mots isolés séparés par des points).
-  const ORDINAL = ['Première', 'Deuxième', 'Troisième', 'Quatrième', 'Cinquième', 'Sixième', 'Septième', 'Huitième', 'Neuvième', 'Dixième'];
-  const effort = (st, e) => (st.mode === 'time' ? speakSec(st.dur) : `${st.reps} répétitions${e.per ? ' ' + e.per : ''}`);
-
-  function announce(st) {
-    const P = S.player;
-    const e = P.list[st.kind === 'rest' ? st.next : st.ex].e, name = spoken(e.name);
-    if (st.kind === 'prep') {
-      say(pick([`Installe-toi tranquillement. On commence par : ${name}.`, `Bienvenue dans ta séance. Premier exercice : ${name}.`, `Prends ta place, on démarre avec : ${name}.`]));
-    } else if (st.kind === 'switch') {
-      say(pick(['On change de côté.', "Très bien, passe de l'autre côté.", 'Autre côté, maintenant.']));
-    } else if (st.kind === 'rest') {
-      const dur = speakSec(st.dur);
-      say(st.between
-        ? `${pick(['Bravo, exercice terminé !', 'Bien joué !', 'Super, celui-là est fait.'])} ${pick([`Pause de ${dur}.`, `On souffle ${dur}.`])} ${pick(['Ensuite', 'Après la pause', 'Prochain exercice'])} : ${spoken(e.name)}.${Math.random() < 0.4 ? " Une petite gorgée d'eau si tu en as besoin." : ''}`
-        : pick([`Repos, ${dur}. Relâche bien.`, `Bien. On récupère ${dur}.`, `Petite pause de ${dur}, respire calmement.`]));
-    } else {
-      const last = st.set === st.sets && st.sets > 1;
-      const side = st.side ? sideLabel(e, st.side).toLowerCase() : '';
-      let text;
-      if (st.set === 1 && st.side !== 'gauche') {
-        const plan = st.sets > 1 ? `${st.sets} séries de ${effort(st, e)}` : effort(st, e);
-        const art = FEM.includes(e.side || 'côté') ? 'la' : 'le';
-        text = `${pick(["C'est parti", 'On y va', 'À toi'])} : ${name}. ${cap(plan)}${side ? `, en commençant par ${art} ${side}` : ''}.`;
-        if (st.mode === 'reps' && !P.repsHint) { P.repsHint = true; text += ' Va à ton rythme, et touche « Série terminée » quand tu as fini.'; }
-      } else if (st.side === 'gauche') {
-        text = `${cap(side)}, ${speakSec(st.dur)}.`;
-      } else {
-        const nth = last ? 'Dernière série' : ORDINAL[st.set - 1] ? `${ORDINAL[st.set - 1]} série` : `Série ${st.set}`;
-        text = `${nth}${side ? `, ${side}` : ''} : ${effort(st, e)}.${last ? pick([' Courage !', ' Tu y es presque.', '']) : ''}`;
-      }
-      say(text);
-    }
-  }
-
-  // Encouragement à mi-parcours d'un effort chronométré, et rappel avant la fin d'une longue pause.
-  function midCue(st, sec) {
-    const P = S.player;
-    if (P.cueIdx === P.idx) return;
-    if (st.kind === 'work' && st.dur >= 30 && sec <= st.dur / 2 && sec % 5 === 0 && sec > 5) {
-      P.cueIdx = P.idx;
-      say(pick([`Plus que ${speakSec(sec)}, continue de respirer.`, `La moitié est faite. Souffle bien pendant l'effort.`, `Encore ${speakSec(sec)}, tu tiens bon.`]));
-    } else if (st.kind === 'rest' && st.dur >= 30 && sec === 10) {
-      P.cueIdx = P.idx;
-      say(pick(['On reprend dans 10 secondes.', 'Prépare-toi, ça repart dans 10 secondes.']));
-    }
-  }
-
-  function sayExample() {
-    const e = getEx('pompes-mur') || EX()[0];
-    say(e ? `Bonjour ! C'est parti : ${spoken(e.name)}. Deux séries de dix répétitions. Souffle bien pendant l'effort, et va à ton rythme.` : "Bonjour ! Voici la voix de tes séances.", true);
   }
 
   function tick() {
@@ -1410,7 +1273,6 @@
       const ring = $('#pl-ring');
       if (ring) ring.style.strokeDashoffset = String(RING * (1 - clamp(rem / (st.dur * 1000), 0, 1)));
       if (sec >= 1 && sec <= 3 && P.lastBeep !== sec) { P.lastBeep = sec; beep(660, 0.09); }
-      midCue(st, sec);
       if (rem <= 0) completeStep(-rem);
     } else {
       setText('#pl-time', fmtClock((now - P.stepStart - P.stepPaused) / 1000));
@@ -1422,7 +1284,7 @@
     if (st.kind === 'work' && !P.done.includes(P.idx)) P.done.push(P.idx);
     const quiet = overshoot > 1500; // rattrapage après une mise en veille : pas de cascade de bips
     if (!quiet) { beep(st.kind === 'work' ? 880 : 990, 0.35); buzz([160, 80, 160]); }
-    if (P.idx + 1 < P.steps.length) goStep(P.idx + 1, { overshoot, silent: quiet }); else finishSession();
+    if (P.idx + 1 < P.steps.length) goStep(P.idx + 1, { overshoot }); else finishSession();
   }
 
   function skipStep() {
@@ -1452,7 +1314,6 @@
       P.paused = true;
       P.pauseAt = now;
       P.remaining = Math.max(0, P.endAt - now);
-      if ('speechSynthesis' in window) speechSynthesis.cancel();
     }
     renderPlayer();
     saveActive();
@@ -1511,7 +1372,7 @@
           <button class="icon-btn" data-action="pl-quit" aria-label="Arrêter la séance">${icon('x')}</button>
           <div class="pl-progress" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100"><div style="width:${pct}%"></div></div>
           <span id="pl-total" class="text-sm font-black tabular w-12 text-right">0:00</span>
-          <button class="icon-btn" data-action="pl-sound" aria-label="${S.settings.sound || S.settings.voice ? 'Couper le son' : 'Activer le son'}">${icon(S.settings.sound || S.settings.voice ? 'sound' : 'mute', 'w-5 h-5')}</button>
+          <button class="icon-btn" data-action="pl-sound" aria-label="${S.settings.sound ? 'Couper le son' : 'Activer le son'}">${icon(S.settings.sound ? 'sound' : 'mute', 'w-5 h-5')}</button>
         </div>
 
         <div class="flex flex-col gap-3 mt-2 flex-1">
@@ -1565,7 +1426,7 @@
       lastBeep: null, finished: false,
     };
     openPlayer();
-    goStep(S.player.idx, { silent: true });
+    goStep(S.player.idx);
   }
 
   async function askQuit() {
@@ -1617,7 +1478,7 @@
     P.completed = P.workDone === P.workTotal;
     store.del('active');
     releaseLock();
-    if (P.completed) { say(pick(['Bravo, séance terminée ! Prends le temps de boire quelques petites gorgées.', 'Et voilà, séance terminée. Beau travail !', 'Séance terminée, bravo ! Pense à bien t\'hydrater, par petites gorgées.'])); beep(660, 0.15); setTimeout(() => beep(990, 0.4), 180); }
+    if (P.completed) { beep(660, 0.15); setTimeout(() => beep(990, 0.4), 180); }
     renderSummary();
   }
 
@@ -1836,11 +1697,9 @@
     'pl-done': () => completeStep(),
     'pl-add': () => addTime(15),
     'pl-sound': () => {
-      const on = !(S.settings.sound || S.settings.voice);
+      const on = !S.settings.sound;
       S.settings.sound = on;
-      S.settings.voice = on;
       saveSettings();
-      if (!on && 'speechSynthesis' in window) speechSynthesis.cancel();
       ensureAudio();
       renderPlayer();
       toast(on ? 'Son activé 🔊' : 'Son coupé 🔇');
@@ -1865,14 +1724,12 @@
     // Réglages
     set: (el) => {
       const k = el.dataset.key, raw = el.dataset.value;
-      S.settings[k] = raw === 'true' ? true : raw === 'false' ? false : /^\d+(\.\d+)?$/.test(raw) ? +raw : raw;
+      S.settings[k] = raw === 'true' ? true : raw === 'false' ? false : /^\d+$/.test(raw) ? +raw : raw;
       saveSettings();
       applyTheme();
       openSettings();
       render();
-      if (k === 'voiceRate') sayExample();
     },
-    'voice-test': () => sayExample(),
     export: () => exportData(),
     import: () => $('#import-file').click(),
     'reset-ex': async () => {
@@ -1908,8 +1765,7 @@
     'sum-note': (el) => { S.player.note = el.value; },
     'sum-pain': (el) => { S.player.painDuring = el.checked; renderSummary(); },
     'sum-prog': (el) => { S.player.progress = el.checked; },
-    'set-bool': (el) => { S.settings[el.dataset.key] = el.checked; saveSettings(); if (el.checked) ensureAudio(); if (el.dataset.key === 'voice') openSettings(); },
-    'set-voice': (el) => { S.settings.voiceURI = el.value; saveSettings(); sayExample(); },
+    'set-bool': (el) => { S.settings[el.dataset.key] = el.checked; saveSettings(); if (el.checked) ensureAudio(); },
     'f-suggest': (el) => {
       if (!S.form || S.form.catTouched) return;
       const f = el.form.elements, cat = suggestCategory([f.name.value, f.objective.value, f.steps.value].join(' '));
@@ -1989,15 +1845,6 @@
     if (document.visibilityState === 'visible' && S.player && !S.player.finished) { lockScreen(); tick(); }
   });
   matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
-  if ('speechSynthesis' in window) {
-    loadVoices();
-    // Chrome charge la liste des voix en différé.
-    speechSynthesis.onvoiceschanged = () => {
-      loadVoices();
-      const sel = $('#voice-select');
-      if (sel) sel.innerHTML = voiceOptions();
-    };
-  }
 
   /* ================= Démarrage ================= */
   function checkActive() {

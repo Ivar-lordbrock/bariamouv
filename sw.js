@@ -4,7 +4,7 @@
  * - images : cache d'abord (elles ne changent pas).
  * Changer CACHE pour forcer le renouvellement après une grosse mise à jour.
  */
-const CACHE = 'bariamouv-v2';
+const CACHE = 'bariamouv-v3';
 const CORE = [
   './', './index.html', './style.css', './app.js', './data.js', './manifest.webmanifest',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
